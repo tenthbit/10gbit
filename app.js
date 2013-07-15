@@ -80,3 +80,5 @@ rootWin.connect("destroy", function () { Gtk.main_quit(); });
 rootWin.show_all();
 Gtk.main();
 
+outStr.write(JSON.stringify({op: 'leave'}) + '\n', null);
+
