@@ -181,7 +181,7 @@ function getTab (id) {
   tab.webView = new imports.gi.WebKit.WebView();
   tab.webView.connect('close-web-view', function () { Gtk.main_quit(); });
   tab.webView.connect('load-finished', function () { flush_lines(id); });
-  tab.webView.load_string("<section id='backlog'></section>", 'text/html', 'utf-8', 'file:///');
+  tab.webView.load_string("<style>p { font-size: 10pt; margin: 6px 0; padding-left: 50px; text-indent: -50px; }</style><section id='backlog'></section>", 'text/html', 'utf-8', 'file:///');
   //
   tab.scroller = new Gtk.ScrolledWindow();
   tab.scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.ALWAYS);
