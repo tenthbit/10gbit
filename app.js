@@ -179,8 +179,8 @@ function TabLabel (text) {
   this.box.set_spacing(5); // spacing: [icon|5px|label|5px|close]  
   
   // icon
-  this.icon = Gtk.Image.new_from_stock(Gtk.STOCK_FILE, Gtk.IconSize.MENU);
-  this.box.pack_start(this.icon, false, false, 0);
+  //this.icon = Gtk.Image.new_from_stock(Gtk.STOCK_FILE, Gtk.IconSize.MENU);
+  //this.box.pack_start(this.icon, false, false, 0);
   
   // label 
   this.label = new Gtk.Label({label: text});
