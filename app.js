@@ -46,11 +46,23 @@ function readHandler (stream, result) {
     tab.room.users.push(pkt.sr);
   } else if (pkt.op == 'leave') {
     if (pkt.rm) {
-      addLine(pkt.rm, pkt.sr + ' left', pkt.ts);
-    
-      let tab = getTab(pkt.rm);
-      tab.room.users.splice(tab.room.users.indexOf(pkt.sr), 1);
-      tab.updateUserlist();
+      if (pkt.ex && pkt.ex.isack && pkt.ex.closeTab) {
+        let tab = getTab(pkt.rm);
+        notebook.remove_page(tab.idx);
+        
+        for (let id in tabs) {
+          if (tabs[id].idx > tab.idx)
+            tabs[id].idx--;
+        };
+        
+        delete tabs[pkt.rm];
+      } else {
+        addLine(pkt.rm, pkt.sr + ' left', pkt.ts);
+      
+        let tab = getTab(pkt.rm);
+        tab.room.users.splice(tab.room.users.indexOf(pkt.sr), 1);
+        tab.updateUserlist();
+      }
     } else {
       for (id in tabs) {
         let tab = tabs[id], idx;
@@ -159,6 +171,44 @@ function dialog (message) {
 }
 
 
+// close tab buttons
+function TabLabel (text) {
+  this.box = new Gtk.Box();
+
+  this.box.set_orientation(Gtk.Orientation.HORIZONTAL);
+  this.box.set_spacing(5); // spacing: [icon|5px|label|5px|close]  
+  
+  // icon
+  this.icon = Gtk.Image.new_from_stock(Gtk.STOCK_FILE, Gtk.IconSize.MENU);
+  this.box.pack_start(this.icon, false, false, 0);
+  
+  // label 
+  this.label = new Gtk.Label({label: text});
+  this.box.pack_start(this.label, true, true, 0);
+  
+  // close button
+  this.button = new Gtk.Button({focus_on_click: false});
+  this.button.set_relief(Gtk.ReliefStyle.NONE);
+  this.button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU));
+  //this.button.connect("clicked", self.button_clicked);
+  this.data = ".button {\n" +
+          "-GtkButton-default-border : 0px;\n" +
+          "-GtkButton-default-outside-border : 0px;\n" +
+          "-GtkButton-inner-border: 0px;\n" +
+          "-GtkWidget-focus-line-width : 0px;\n" +
+          "-GtkWidget-focus-padding : 0px;\n" +
+          "padding: 0px;\n" +
+          "}";
+  this.provider = new Gtk.CssProvider();
+  this.provider.load_from_data(this.data);
+  // 600 = GTK_STYLE_PROVIDER_PRIORITY_APPLICATION
+  this.button.get_style_context().add_provider(this.provider, 600);
+  this.box.pack_start(this.button, false, false, 0);
+  
+  this.box.show_all();
+};
+
+
 /*
  * Run the main thang
  ************************/
@@ -172,7 +222,8 @@ rootWin.connect("destroy", function () { Gtk.main_quit(); });
 
 let tabs = {};
 function getTab (id) {
-  if (id in tabs) return tabs[id];
+  if (id in tabs)
+    return tabs[id];
   
   let tab = {backlog: []};
   tab.room = rooms[id];
@@ -208,9 +259,13 @@ function getTab (id) {
   tab.box.pack_start(tab.scroller, true, true, 0);
   tab.box.pack_start(tab.scroller2, false, false, 0);
   
-  tab.label = new Gtk.Label({label: tab.room.name});
-  tab.idx = notebook.append_page(tab.box, tab.label);
+  tab.label = new TabLabel(tab.room.name);
+  tab.idx = notebook.append_page(tab.box, tab.label.box);
   notebook.show_all();
+  
+  tab.label.button.connect('clicked', function () {
+    outStr.write(JSON.stringify({op: 'leave', rm: id, ex: {closeTab: true}}) + '\n', null);
+  });
   
   tab.updateUserlist = function () {
     tab.userstore.clear();
