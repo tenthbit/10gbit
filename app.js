@@ -1,6 +1,7 @@
 #!/usr/bin/env gjs
 const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
+const Notify = imports.gi.Notify;
 
 let rooms = {};
 
@@ -26,6 +27,11 @@ function readHandler (stream, result) {
   } else if (pkt.op == 'act') {
     if (pkt.ex.message) {
       addLine('<' + pkt.sr + '/' + rooms[pkt.rm].name + '> ' + pkt.ex.message);
+      
+      if (!pkt.ex.isack && !rootWin.is_active) {
+        let notif = new Notify.Notification({summary: pkt.sr + ' messaged '+rooms[pkt.rm].name, body: pkt.ex.message});
+        notif.show();
+      };
     };
   } else if (pkt.op == 'join') {
     addLine(pkt.sr + ' has joined ' + rooms[pkt.rm].name);
@@ -100,6 +106,7 @@ function dialog (message) {
  * Run the main thang
  ************************/
 Gtk.init(null, 0);
+Notify.init("10Gbit");
 
 var rootWin = new Gtk.Window({type: Gtk.WindowType.TOPLEVEL, border_width: 10});
 rootWin.title = "10Gbit";
