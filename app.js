@@ -27,9 +27,9 @@ function readHandler (stream, result) {
   } else if (pkt.op == 'act') {
     if (pkt.ex.message) {
       if (pkt.ex.isaction) {
-        addLine(pkt.rm, rooms[pkt.rm].name + ': * ' + pkt.sr + ' ' + pkt.ex.message);
+        addLine(pkt.rm, '* ' + pkt.sr + ' ' + pkt.ex.message);
       } else {
-        addLine(pkt.rm, '<' + pkt.sr + '/' + rooms[pkt.rm].name + '> ' + pkt.ex.message);
+        addLine(pkt.rm, '<' + pkt.sr + '> ' + pkt.ex.message);
       }
       
       if (!pkt.ex.isack && !rootWin.is_active) {
@@ -38,12 +38,12 @@ function readHandler (stream, result) {
       };
     };
   } else if (pkt.op == 'join') {
-    addLine(pkt.rm, pkt.sr + ' has joined ' + rooms[pkt.rm].name);
+    addLine(pkt.rm, pkt.sr + ' joined');
   } else if (pkt.op == 'leave') {
     if (pkt.rm) {
-      addLine(pkt.rm, pkt.sr + ' has left ' + rooms[pkt.rm].name);
+      addLine(pkt.rm, pkt.sr + ' left');
     } else {
-      addLine(pkt.rm, pkt.sr + ' has disconnected');
+      addLine(Object.keys(rooms)[0], pkt.sr + ' has disconnected');
     }
   } else if (pkt.op == 'meta' && pkt.rm) {
     rooms[pkt.rm] = pkt.ex;
