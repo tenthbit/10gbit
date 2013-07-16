@@ -45,35 +45,33 @@ function readHandler (stream, result) {
     tab.userstore.set_value(iter, 0, pkt.sr);
     tab.room.users.push(pkt.sr);
   } else if (pkt.op == 'leave') {
-    if (pkt.rm) {
-      if (pkt.ex && pkt.ex.isack && pkt.ex.closeTab) {
-        let tab = getTab(pkt.rm);
-        notebook.remove_page(tab.idx);
-        
-        for (let id in tabs) {
-          if (tabs[id].idx > tab.idx)
-            tabs[id].idx--;
-        };
-        
-        delete tabs[pkt.rm];
-      } else {
-        addLine(pkt.rm, pkt.sr + ' left', pkt.ts);
+    if (pkt.ex && pkt.ex.isack && pkt.ex.closeTab) {
+      let tab = getTab(pkt.rm);
+      notebook.remove_page(tab.idx);
       
-        let tab = getTab(pkt.rm);
-        tab.room.users.splice(tab.room.users.indexOf(pkt.sr), 1);
-        tab.updateUserlist();
-      }
-    } else {
-      for (id in tabs) {
-        let tab = tabs[id], idx;
-        if ((idx = tab.room.users.indexOf(pkt.sr)) == -1) continue;
-        
-        addLine(id, pkt.sr + ' disconnected', pkt.ts);
-        tab.room.users.splice(idx, 1);
-        tab.updateUserlist();
+      for (let id in tabs) {
+        if (tabs[id].idx > tab.idx)
+          tabs[id].idx--;
       };
-      // TODO: everything
+      
+      delete tabs[pkt.rm];
+    } else {
+      addLine(pkt.rm, pkt.sr + ' left', pkt.ts);
+    
+      let tab = getTab(pkt.rm);
+      tab.room.users.splice(tab.room.users.indexOf(pkt.sr), 1);
+      tab.updateUserlist();
     }
+  } else if (pkt.op == 'disconnect') {
+    for (id in tabs) {
+      let tab = tabs[id], idx;
+      if ((idx = tab.room.users.indexOf(pkt.sr)) == -1) continue;
+      
+      addLine(id, pkt.sr + ' disconnected', pkt.ts);
+      tab.room.users.splice(idx, 1);
+      tab.updateUserlist();
+    };
+    // TODO: everything
   } else if (pkt.op == 'meta' && pkt.rm) {
     rooms[pkt.rm] = pkt.ex;
     
@@ -346,5 +344,5 @@ msgBtn.grab_default();
 
 Gtk.main();
 
-outStr.write(JSON.stringify({op: 'leave'}) + '\n', null);
+outStr.write(JSON.stringify({op: 'disconnect'}) + '\n', null);
 
