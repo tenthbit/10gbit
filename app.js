@@ -39,15 +39,27 @@ function readHandler (stream, result) {
     };
   } else if (pkt.op == 'join') {
     addLine(pkt.rm, pkt.sr + ' joined', pkt.ts);
+    
+    let tab = getTab(pkt.rm);
+    let iter = tab.userstore.append();
+    tab.userstore.set_value(iter, 0, pkt.sr);
+    tab.room.users.push(pkt.sr);
   } else if (pkt.op == 'leave') {
     if (pkt.rm) {
       addLine(pkt.rm, pkt.sr + ' left', pkt.ts);
+    
+      let tab = getTab(pkt.rm);
+      tab.room.users.splice(tab.room.users.indexOf(pkt.sr), 1);
+      tab.updateUserlist();
     } else {
       addLine(Object.keys(rooms)[0], pkt.sr + ' has disconnected', pkt.ts);
+      // TODO: everything
     }
   } else if (pkt.op == 'meta' && pkt.rm) {
     rooms[pkt.rm] = pkt.ex;
-    getTab(pkt.rm);
+    
+    let tab = getTab(pkt.rm);
+    tab.updateUserlist();
   } else {
     print('unhandled op ' + pkt.op);
   };
@@ -163,14 +175,43 @@ function getTab (id) {
   tab.webView.connect('close-web-view', function () { Gtk.main_quit(); });
   tab.webView.connect('load-finished', function () { flush_lines(id); });
   tab.webView.load_string("<section id='backlog'></section>", 'text/html', 'utf-8', 'file:///');
-
+  //
   tab.scroller = new Gtk.ScrolledWindow();
-  tab.scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
+  tab.scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.ALWAYS);
   tab.scroller.add(tab.webView);
   
+  tab.userlist = new Gtk.TreeView({headers_visible: false});
+  tab.userstore = new Gtk.ListStore();
+  tab.userstore.set_column_types([imports.gi.GObject.TYPE_STRING]);
+  tab.userlist.set_model(tab.userstore);
+  tab.userlist.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE);
+  //
+  tab.usercolumn = new Gtk.TreeViewColumn();
+  tab.usercell = new Gtk.CellRendererText();
+  tab.usercell.set_fixed_size(100, -1);
+  tab.usercolumn.pack_start(tab.usercell, true);
+  tab.usercolumn.add_attribute(tab.usercell, "text", 0);
+  tab.userlist.append_column(tab.usercolumn);
+  //
+  tab.scroller2 = new Gtk.ScrolledWindow();
+  tab.scroller2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+  tab.scroller2.add(tab.userlist);
+  
+  tab.box = new Gtk.HBox();
+  tab.box.pack_start(tab.scroller, true, true, 0);
+  tab.box.pack_start(tab.scroller2, false, false, 0);
+  
   tab.label = new Gtk.Label({label: tab.room.name});
-  tab.idx = notebook.append_page(tab.scroller, tab.label);
+  tab.idx = notebook.append_page(tab.box, tab.label);
   notebook.show_all();
+  
+  tab.updateUserlist = function () {
+    tab.userstore.clear();
+    tab.room.users.forEach(function (user) {
+      let iter = tab.userstore.append();
+      tab.userstore.set_value(iter, 0, user);
+    });
+  };
   
   return tabs[id] = tab;
 };
@@ -179,7 +220,7 @@ let msgTxt = new Gtk.Entry({activates_default: true});
 let msgBtn = new Gtk.Button({label: 'Send', can_default: true});
 let msgBox = new Gtk.HBox();
 msgBox.pack_start(msgTxt, true, true, 0);
-msgBox.pack_end(msgBtn, false, false, 0);
+msgBox.pack_start(msgBtn, false, false, 5);
 
 msgBtn.connect('clicked', function () {
   let msg = msgTxt.get_text();
