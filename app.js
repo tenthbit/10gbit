@@ -117,6 +117,15 @@ function flush_lines (id) {
   return true;
 }
 
+function currentRoom () {
+  let idx = notebook.get_current_page();
+  for (id in tabs) {
+    if (tabs[id].idx == idx)
+      return id;
+  };
+  return null;
+}
+
 
 function dialog (message) {
   let msg = new Gtk.MessageDialog({text: message});
@@ -179,7 +188,7 @@ msgBtn.connect('clicked', function () {
     msg = words.join(' ');
     
     if (cmd == 'me') {
-      outStr.write(JSON.stringify({op: 'act', rm: Object.keys(rooms)[0], ex: {message: msg, isaction: true}}) + '\n', null);
+      outStr.write(JSON.stringify({op: 'act', rm: currentRoom(), ex: {message: msg, isaction: true}}) + '\n', null);
     } else if (cmd == 'join') {
       outStr.write(JSON.stringify({op: 'join', rm: msg}) + '\n', null);
     } else if (cmd == 'leave') {
@@ -187,10 +196,10 @@ msgBtn.connect('clicked', function () {
     } else if (cmd == 'quit') {
       Gtk.main_quit();
     } else {
-      addLine(Object.keys(rooms)[0], 'Unknown command: ' + cmd);
+      addLine(currentRoom(), 'Unknown command: ' + cmd);
     };
   } else {
-    outStr.write(JSON.stringify({op: 'act', rm: Object.keys(rooms)[0], ex: {message: msg}}) + '\n', null);
+    outStr.write(JSON.stringify({op: 'act', rm: currentRoom(), ex: {message: msg}}) + '\n', null);
   };
 });
 
