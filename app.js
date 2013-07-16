@@ -220,6 +220,9 @@ function getTab (id) {
     });
   };
   
+  completion.set_model(tab.userstore);
+  completion.set_text_column(0);
+  
   return tabs[id] = tab;
 };
 
@@ -228,6 +231,20 @@ let msgBtn = new Gtk.Button({label: 'Send', can_default: true});
 let msgBox = new Gtk.HBox();
 msgBox.pack_start(msgTxt, true, true, 0);
 msgBox.pack_start(msgBtn, false, false, 5);
+
+let completion = new Gtk.EntryCompletion({inline_completion: true, popup_single_match: false});
+msgTxt.set_completion(completion);
+//completion.insert_action_text(0, 'Query...');
+completion.connect('match-selected', function (completion, model, iter) {
+  print('asdf ' + iter);
+});
+completion.connect('insert-prefix', function (completion, prefix) {
+  let len = msgTxt.get_text_length();
+  prefix += ': ';
+  msgTxt.set_text(prefix);
+  msgTxt.select_region(len, prefix.length);
+  return true;
+});
 
 msgBtn.connect('clicked', function () {
   let msg = msgTxt.get_text();
