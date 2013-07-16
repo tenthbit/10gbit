@@ -27,9 +27,9 @@ function readHandler (stream, result) {
   } else if (pkt.op == 'act') {
     if (pkt.ex.message) {
       if (pkt.ex.isaction) {
-        addLine(pkt.rm, '* ' + pkt.sr + ' ' + pkt.ex.message);
+        addLine(pkt.rm, '* ' + pkt.sr + ' ' + pkt.ex.message, pkt.ts);
       } else {
-        addLine(pkt.rm, '<' + pkt.sr + '> ' + pkt.ex.message);
+        addLine(pkt.rm, '<' + pkt.sr + '> ' + pkt.ex.message, pkt.ts);
       }
       
       if (!pkt.ex.isack && !rootWin.is_active) {
@@ -38,12 +38,12 @@ function readHandler (stream, result) {
       };
     };
   } else if (pkt.op == 'join') {
-    addLine(pkt.rm, pkt.sr + ' joined');
+    addLine(pkt.rm, pkt.sr + ' joined', pkt.ts);
   } else if (pkt.op == 'leave') {
     if (pkt.rm) {
-      addLine(pkt.rm, pkt.sr + ' left');
+      addLine(pkt.rm, pkt.sr + ' left', pkt.ts);
     } else {
-      addLine(Object.keys(rooms)[0], pkt.sr + ' has disconnected');
+      addLine(Object.keys(rooms)[0], pkt.sr + ' has disconnected', pkt.ts);
     }
   } else if (pkt.op == 'meta' && pkt.rm) {
     rooms[pkt.rm] = pkt.ex;
@@ -89,18 +89,21 @@ function showAuth (server, method) {
   window.destroy();
 }
 
-function addLine (id, line) {
+function addLine (id, line, ts) {
   let tab = getTab(id);
   if (!tab) return false;
   
   if (tab.ready) {
+    if (ts)
+      line = '[' + (new Date(ts).toLocaleFormat('%H:%M:%S')) + '] ' + line;
+    
     let doc = getTab(id).webView.get_dom_document();
     let p = doc.create_element('p');
     p.inner_text = line;
     doc.get_element_by_id('backlog').append_child(p);
     p.scroll_into_view(false);
   } else {
-    tab.backlog.push(line);
+    tab.backlog.push([line, ts]);
   };
   return true;
 }
@@ -110,8 +113,8 @@ function flush_lines (id) {
   if (!tab || tab.ready) return false;
   tab.ready = true;
   
-  tab.backlog.forEach(function (line) {
-    addLine(id, line);
+  tab.backlog.forEach(function (args) {
+    addLine(id, args[0], args[1]);
   });
   delete tab.backlog;
   return true;
