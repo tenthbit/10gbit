@@ -52,7 +52,14 @@ function readHandler (stream, result) {
       tab.room.users.splice(tab.room.users.indexOf(pkt.sr), 1);
       tab.updateUserlist();
     } else {
-      addLine(Object.keys(rooms)[0], pkt.sr + ' has disconnected', pkt.ts);
+      for (id in tabs) {
+        let tab = tabs[id], idx;
+        if ((idx = tab.room.users.indexOf(pkt.sr)) == -1) continue;
+        
+        addLine(id, pkt.sr + ' has disconnected', pkt.ts);
+        tab.room.users.splice(idx, 1);
+        tab.updateUserlist();
+      };
       // TODO: everything
     }
   } else if (pkt.op == 'meta' && pkt.rm) {
