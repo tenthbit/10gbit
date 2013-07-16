@@ -68,7 +68,7 @@ function readHandler (stream, result) {
         let tab = tabs[id], idx;
         if ((idx = tab.room.users.indexOf(pkt.sr)) == -1) continue;
         
-        addLine(id, pkt.sr + ' has disconnected', pkt.ts);
+        addLine(id, pkt.sr + ' disconnected', pkt.ts);
         tab.room.users.splice(idx, 1);
         tab.updateUserlist();
       };
