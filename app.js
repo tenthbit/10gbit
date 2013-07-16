@@ -23,13 +23,13 @@ function readHandler (stream, result) {
   if (pkt.op == 'welcome') {
     showAuth(pkt.ex.server, pkt.ex.auth[0]);
   } else if (pkt.op == 'auth') {
-    addLine('Authenticated as ' + pkt.ex.username);
+    //addLine('Authenticated as ' + pkt.ex.username);
   } else if (pkt.op == 'act') {
     if (pkt.ex.message) {
       if (pkt.ex.isaction) {
-        addLine(rooms[pkt.rm].name + ': * ' + pkt.sr + ' ' + pkt.ex.message);
+        addLine(pkt.rm, rooms[pkt.rm].name + ': * ' + pkt.sr + ' ' + pkt.ex.message);
       } else {
-        addLine('<' + pkt.sr + '/' + rooms[pkt.rm].name + '> ' + pkt.ex.message);
+        addLine(pkt.rm, '<' + pkt.sr + '/' + rooms[pkt.rm].name + '> ' + pkt.ex.message);
       }
       
       if (!pkt.ex.isack && !rootWin.is_active) {
@@ -38,15 +38,16 @@ function readHandler (stream, result) {
       };
     };
   } else if (pkt.op == 'join') {
-    addLine(pkt.sr + ' has joined ' + rooms[pkt.rm].name);
+    addLine(pkt.rm, pkt.sr + ' has joined ' + rooms[pkt.rm].name);
   } else if (pkt.op == 'leave') {
     if (pkt.rm) {
-      addLine(pkt.sr + ' has left ' + rooms[pkt.rm].name);
+      addLine(pkt.rm, pkt.sr + ' has left ' + rooms[pkt.rm].name);
     } else {
-      addLine(pkt.sr + ' has disconnected');
+      addLine(pkt.rm, pkt.sr + ' has disconnected');
     }
   } else if (pkt.op == 'meta' && pkt.rm) {
     rooms[pkt.rm] = pkt.ex;
+    getTab(pkt.rm);
   } else {
     print('unhandled op ' + pkt.op);
   };
@@ -88,13 +89,34 @@ function showAuth (server, method) {
   window.destroy();
 }
 
-function addLine (line) {
-  let doc = webView.get_dom_document();
-  let p = doc.create_element('p');
-  p.inner_text = line;
-  doc.get_element_by_id('backlog').append_child(p);
-  p.scroll_into_view(false);
+function addLine (id, line) {
+  let tab = getTab(id);
+  if (!tab) return false;
+  
+  if (tab.ready) {
+    let doc = getTab(id).webView.get_dom_document();
+    let p = doc.create_element('p');
+    p.inner_text = line;
+    doc.get_element_by_id('backlog').append_child(p);
+    p.scroll_into_view(false);
+  } else {
+    tab.backlog.push(line);
+  };
+  return true;
 }
+
+function flush_lines (id) {
+  let tab = getTab(id);
+  if (!tab || tab.ready) return false;
+  tab.ready = true;
+  
+  tab.backlog.forEach(function (line) {
+    addLine(id, line);
+  });
+  delete tab.backlog;
+  return true;
+}
+
 
 function dialog (message) {
   let msg = new Gtk.MessageDialog({text: message});
@@ -117,13 +139,29 @@ rootWin.title = "10Gbit";
 rootWin.set_default_size(800, 600);
 rootWin.connect("destroy", function () { Gtk.main_quit(); });
 
-let webView = new imports.gi.WebKit.WebView();
-webView.connect('close-web-view', function () { Gtk.main_quit(); });
-webView.load_string("<section id='backlog'></section>", 'text/html', 'utf-8', 'about:blank');
+let tabs = {};
+function getTab (id) {
+  if (id in tabs) return tabs[id];
+  
+  let tab = {backlog: []};
+  tab.room = rooms[id];
+  if (!tab.room) {print('bad');return null;}
+  
+  tab.webView = new imports.gi.WebKit.WebView();
+  tab.webView.connect('close-web-view', function () { Gtk.main_quit(); });
+  tab.webView.connect('load-finished', function () { flush_lines(id); });
+  tab.webView.load_string("<section id='backlog'></section>", 'text/html', 'utf-8', 'file:///');
 
-let scroller = new Gtk.ScrolledWindow();
-scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
-scroller.add(webView);
+  tab.scroller = new Gtk.ScrolledWindow();
+  tab.scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
+  tab.scroller.add(tab.webView);
+  
+  tab.label = new Gtk.Label({label: tab.room.name});
+  tab.idx = notebook.append_page(tab.scroller, tab.label);
+  notebook.show_all();
+  
+  return tabs[id] = tab;
+};
 
 let msgTxt = new Gtk.Entry({activates_default: true});
 let msgBtn = new Gtk.Button({label: 'Send', can_default: true});
@@ -149,15 +187,17 @@ msgBtn.connect('clicked', function () {
     } else if (cmd == 'quit') {
       Gtk.main_quit();
     } else {
-      addLine('Unknown command: ' + cmd);
+      addLine(Object.keys(rooms)[0], 'Unknown command: ' + cmd);
     };
   } else {
     outStr.write(JSON.stringify({op: 'act', rm: Object.keys(rooms)[0], ex: {message: msg}}) + '\n', null);
   };
 });
 
+let notebook = new Gtk.Notebook();
+
 let rootBox = new Gtk.VBox();
-rootBox.pack_start(scroller, true, true, 5);
+rootBox.pack_start(notebook, true, true, 5);
 rootBox.pack_end(msgBox, false, false, 0);
 
 rootWin.add(rootBox);
