@@ -2,6 +2,8 @@
 const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
 
+let rooms = {};
+
 /*
  * Connect to server
  ************************/
@@ -20,19 +22,21 @@ function readHandler (stream, result) {
   if (pkt.op == 'welcome') {
     showAuth(pkt.ex.server, pkt.ex.auth[0]);
   } else if (pkt.op == 'auth') {
-    addLine('Authenticated to server');
+    addLine('Authenticated as ' + pkt.ex.username);
   } else if (pkt.op == 'act') {
     if (pkt.ex.message) {
-      addLine('<' + pkt.sr + '> ' + pkt.ex.message);
+      addLine('<' + pkt.sr + '/' + rooms[pkt.rm].name + '> ' + pkt.ex.message);
     };
   } else if (pkt.op == 'join') {
-    addLine(pkt.sr + ' has joined ' + pkt.rm);
+    addLine(pkt.sr + ' has joined ' + rooms[pkt.rm].name);
   } else if (pkt.op == 'leave') {
     if (pkt.rm) {
-      addLine(pkt.sr + ' has left ' + pkt.rm);
+      addLine(pkt.sr + ' has left ' + rooms[pkt.rm].name);
     } else {
       addLine(pkt.sr + ' has disconnected');
     }
+  } else if (pkt.op == 'meta' && pkt.rm) {
+    rooms[pkt.rm] = pkt.ex;
   } else {
     print('unhandled op ' + pkt.op);
   };
@@ -118,7 +122,7 @@ msgBox.pack_end(msgBtn, false, false, 0);
 
 msgBtn.connect('clicked', function () {
   let msg = msgTxt.get_text();
-  outStr.write(JSON.stringify({op: 'act', rm: '48557f95', ex: {message: msg}}) + '\n', null);
+  outStr.write(JSON.stringify({op: 'act', rm: Object.keys(rooms)[0], ex: {message: msg}}) + '\n', null);
   msgTxt.set_text('');
 });
 
