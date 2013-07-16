@@ -236,11 +236,11 @@ let completion = new Gtk.EntryCompletion({inline_completion: true, popup_single_
 msgTxt.set_completion(completion);
 //completion.insert_action_text(0, 'Query...');
 completion.connect('match-selected', function (completion, model, iter) {
-  print('asdf ' + iter);
+  //print('asdf ' + iter);
 });
 completion.connect('insert-prefix', function (completion, prefix) {
   let len = msgTxt.get_text_length();
-  prefix += ': ';
+  if (prefix.length) prefix += ': ';
   msgTxt.set_text(prefix);
   msgTxt.select_region(len, prefix.length);
   return true;
