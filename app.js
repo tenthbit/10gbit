@@ -19,10 +19,20 @@ function readHandler (stream, result) {
   
   if (pkt.op == 'welcome') {
     showAuth(pkt.ex.server, pkt.ex.auth[0]);
-  } else if (pkt.op == 'ack') {
+  } else if (pkt.op == 'auth') {
     addLine('Authenticated to server');
   } else if (pkt.op == 'act') {
-    addLine('<' + pkt.sr + '> ' + pkt.ex.data);
+    if (pkt.ex.message) {
+      addLine('<' + pkt.sr + '> ' + pkt.ex.message);
+    };
+  } else if (pkt.op == 'join') {
+    addLine(pkt.sr + ' has joined ' + pkt.rm);
+  } else if (pkt.op == 'leave') {
+    if (pkt.rm) {
+      addLine(pkt.sr + ' has left ' + pkt.rm);
+    } else {
+      addLine(pkt.sr + ' has disconnected');
+    }
   } else {
     print('unhandled op ' + pkt.op);
   };
@@ -108,7 +118,7 @@ msgBox.pack_end(msgBtn, false, false, 0);
 
 msgBtn.connect('clicked', function () {
   let msg = msgTxt.get_text();
-  outStr.write(JSON.stringify({op: 'act', rm: '48557f95', ex: {type: 'msg', data: msg}}) + '\n', null);
+  outStr.write(JSON.stringify({op: 'act', rm: '48557f95', ex: {message: msg}}) + '\n', null);
   msgTxt.set_text('');
 });
 
