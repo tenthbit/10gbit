@@ -26,7 +26,11 @@ function readHandler (stream, result) {
     addLine('Authenticated as ' + pkt.ex.username);
   } else if (pkt.op == 'act') {
     if (pkt.ex.message) {
-      addLine('<' + pkt.sr + '/' + rooms[pkt.rm].name + '> ' + pkt.ex.message);
+      if (pkt.ex.isaction) {
+        addLine(rooms[pkt.rm].name + ': * ' + pkt.sr + ' ' + pkt.ex.message);
+      } else {
+        addLine('<' + pkt.sr + '/' + rooms[pkt.rm].name + '> ' + pkt.ex.message);
+      }
       
       if (!pkt.ex.isack && !rootWin.is_active) {
         let notif = new Notify.Notification({summary: pkt.sr + ' messaged '+rooms[pkt.rm].name, body: pkt.ex.message});
@@ -129,8 +133,27 @@ msgBox.pack_end(msgBtn, false, false, 0);
 
 msgBtn.connect('clicked', function () {
   let msg = msgTxt.get_text();
-  outStr.write(JSON.stringify({op: 'act', rm: Object.keys(rooms)[0], ex: {message: msg}}) + '\n', null);
   msgTxt.set_text('');
+  
+  if (msg[0] == '/') {
+    var words = msg.split(' ');
+    var cmd = words.shift().substring(1);
+    msg = words.join(' ');
+    
+    if (cmd == 'me') {
+      outStr.write(JSON.stringify({op: 'act', rm: Object.keys(rooms)[0], ex: {message: msg, isaction: true}}) + '\n', null);
+    } else if (cmd == 'join') {
+      outStr.write(JSON.stringify({op: 'join', rm: msg}) + '\n', null);
+    } else if (cmd == 'leave') {
+      outStr.write(JSON.stringify({op: 'leave', rm: msg}) + '\n', null);
+    } else if (cmd == 'quit') {
+      Gtk.main_quit();
+    } else {
+      addLine('Unknown command: ' + cmd);
+    };
+  } else {
+    outStr.write(JSON.stringify({op: 'act', rm: Object.keys(rooms)[0], ex: {message: msg}}) + '\n', null);
+  };
 });
 
 let rootBox = new Gtk.VBox();
