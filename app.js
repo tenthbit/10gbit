@@ -190,9 +190,15 @@ msgBtn.connect('clicked', function () {
     if (cmd == 'me') {
       outStr.write(JSON.stringify({op: 'act', rm: currentRoom(), ex: {message: msg, isaction: true}}) + '\n', null);
     } else if (cmd == 'join') {
+      if (!msg.length) msg = currentRoom();
       outStr.write(JSON.stringify({op: 'join', rm: msg}) + '\n', null);
-    } else if (cmd == 'leave') {
+    } else if (cmd == 'part' || cmd == 'leave') {
+      if (!msg.length) msg = currentRoom();
       outStr.write(JSON.stringify({op: 'leave', rm: msg}) + '\n', null);
+    } else if (cmd == 'cycle') {
+      if (!msg.length) msg = currentRoom();
+      outStr.write(JSON.stringify({op: 'leave', rm: msg}) + '\n', null);
+      outStr.write(JSON.stringify({op: 'join', rm: msg}) + '\n', null);
     } else if (cmd == 'quit') {
       Gtk.main_quit();
     } else {
